@@ -1,5 +1,5 @@
 // ── CONFIG ──────────────────────────────────────────────────────────────────
-const OPENAI_API_KEY = "TU_API_KEY_AQUI"; // reemplazar antes de la clase
+const OPENAI_API_KEY = "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";
 const MODEL = "gpt-4o"; // cambiar a gpt-5.5 si está disponible al momento
 
 const SYSTEM_PROMPT = `Eres SIGMA-9, un narrador sarcástico de física para estudiantes de preparatoria en México.
