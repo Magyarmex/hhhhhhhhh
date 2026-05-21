@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fusión Nuclear — Simulador Interactivo</title>
+  <link rel="stylesheet" href="calculator.css" />
+</head>
+<body>
+
+<canvas id="stars-canvas"></canvas>
+
+<nav>
+  <div class="nav-logo">⚛ Fusión <span>Nuclear</span></div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" data-section="calculator">Calculadora</button>
+    <button class="nav-tab" data-section="star-sim">Simulador ★</button>
+  </div>
+</nav>
+
+<main>
+
+  <!-- ══════════ CALCULADORA ══════════ -->
+  <section id="calculator" class="section active">
+
+    <div class="calc-header">
+      <h1>¿Cuánta energía hay en <em>eso</em>?</h1>
+      <p>Escribe un objeto, un evento energético, o los dos.<br>
+         SIGMA-9 hará los cálculos y te hará sentir pequeño.</p>
+    </div>
+
+    <div class="input-card">
+      <div class="fields-row">
+
+        <div class="field-group">
+          <label class="field-label" for="input-objeto">Un objeto cotidiano</label>
+          <input
+            id="input-objeto"
+            class="field-input"
+            type="text"
+            placeholder="ej: una pluma, mi cerebro…"
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <div class="chips" id="chips-objeto">
+            <button class="chip" data-target="input-objeto" data-value="una pluma">🖊️ pluma</button>
+            <button class="chip" data-target="input-objeto" data-value="una moneda de 10 pesos">🪙 moneda</button>
+            <button class="chip" data-target="input-objeto" data-value="una hormiga">🐜 hormiga</button>
+            <button class="chip" data-target="input-objeto" data-value="el cerebro humano">🧠 cerebro</button>
+            <button class="chip" data-target="input-objeto" data-value="una manzana">🍎 manzana</button>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label" for="input-evento">Un evento energético</label>
+          <input
+            id="input-evento"
+            class="field-input"
+            type="text"
+            placeholder="ej: una bomba nuclear, mil rayos…"
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <div class="chips" id="chips-evento">
+            <button class="chip" data-target="input-evento" data-value="una bomba nuclear como la de Hiroshima">💥 bomba nuclear</button>
+            <button class="chip" data-target="input-evento" data-value="mil rayos eléctricos">⚡ mil rayos</button>
+            <button class="chip" data-target="input-evento" data-value="el golpe más fuerte de un boxeador profesional">👊 golpe boxeador</button>
+            <button class="chip" data-target="input-evento" data-value="la erupción del volcán Krakatoa">🌋 Krakatoa</button>
+          </div>
+        </div>
+
+      </div><!-- /fields-row -->
+
+      <div class="actions-row">
+        <button class="btn-surprise" id="btn-surprise">🎲 Sorpréndeme</button>
+        <button class="btn-calc" id="btn-calc" disabled>
+          <span class="btn-label" id="btn-label">⚡ Escribe algo primero</span>
+          <span class="spinner"></span>
+        </button>
+      </div>
+    </div><!-- /input-card -->
+
+    <!-- OUTPUT -->
+    <div class="output-card" id="output-card">
+      <div class="output-label">SIGMA-9 dice:</div>
+      <div class="output-gancho" id="output-gancho"></div>
+      <div class="output-calculo" id="output-calculo"></div>
+      <div class="output-remate" id="output-remate"></div>
+      <div class="output-actions">
+        <button class="btn-copy" id="btn-copy">📋 Copiar resultado</button>
+        <span class="output-fallback-notice" id="fallback-notice" style="display:none">
+          ⚠️ La IA está de mal humor. Resultado pregrabado.
+        </span>
+      </div>
+    </div>
+
+    <!-- HISTORIAL -->
+    <div class="history-section" id="history-section" style="display:none">
+      <div class="history-title">Cálculos anteriores</div>
+      <div class="history-list" id="history-list"></div>
+    </div>
+
+  </section><!-- /calculator -->
+
+  <!-- ══════════ SIMULADOR DE ESTRELLA ══════════ -->
+  <section id="star-sim" class="section">
+    <div class="star-placeholder">
+      <h2>🌟 Simulador de Estrella</h2>
+      <p>Próximamente. Aquí irá la simulación 3D con Three.js.</p>
+    </div>
+  </section>
+
+</main>
+
+<script src="calculator.js"></script>
+</body>
+</html>
