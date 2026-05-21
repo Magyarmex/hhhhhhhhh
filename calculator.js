@@ -44,11 +44,11 @@ CONSTANTES:
 
 REGLAS ABSOLUTAS:
 1. El resultado final SIEMPRE se escribe de dos formas, en este orden exacto:
-   a) El número completo con todos sus ceros y comas de millar. Sin notación científica. Sin abreviar.
-      Ejemplo: 5,390,000,000 golpes — no "5.39 × 10^9", no "5 mil millones".
+   a) La notación científica seguida inmediatamente del signo igual y el número completo con todas sus comas de millar, todo en la misma línea. Sin abreviar. Sin saltarse ningún cero.
+      Formato exacto: 5.39 × 10^9 = 5,390,000,000 golpes
       Si el número tiene más de 15 dígitos, escríbelo igual, completo.
    b) Inmediatamente después, entre paréntesis, el nombre de ese número en palabras:
-      5,390,000,000 (cinco mil trescientos noventa millones)
+      5.39 × 10^9 = 5,390,000,000 (cinco mil trescientos noventa millones) golpes
 
 2. Después del número completo, SIEMPRE añade en la siguiente línea una comparación de escala concreta que haga que el número se sienta real. La comparación debe ser un cálculo real, no una metáfora vaga. Ejemplos del estilo:
    - "Si Tyson diera un golpe por segundo sin descansar, tardaría 170 años en acabarlos. Murió antes."
