@@ -260,20 +260,42 @@ function parseResponse(text) {
 }
 
 // ── TYPEWRITER ────────────────────────────────────────────────────────────────
+// Track all active typewriter intervals so they can be cancelled before a new
+// renderOutput call — prevents two intervals writing to the same element.
+const _activeIntervals = new Set();
+
 function typewrite(el, text, speed = 18) {
   el.textContent = "";
+  // Use [...text] (spread) instead of text[i] to correctly handle emoji and
+  // characters outside the BMP (U+FFFF+), which JavaScript stores as surrogate
+  // pairs. text[i] would split them into invalid half-characters.
+  const chars = [...text];
   let i = 0;
   return new Promise(resolve => {
     const interval = setInterval(() => {
-      el.textContent += text[i];
+      if (!_activeIntervals.has(interval)) { resolve(); return; }
+      el.textContent += chars[i];
       i++;
-      if (i >= text.length) { clearInterval(interval); resolve(); }
+      if (i >= chars.length) {
+        clearInterval(interval);
+        _activeIntervals.delete(interval);
+        resolve();
+      }
     }, speed);
+    _activeIntervals.add(interval);
   });
+}
+
+function cancelAllTypewriters() {
+  _activeIntervals.forEach(id => clearInterval(id));
+  _activeIntervals.clear();
 }
 
 // ── RENDER OUTPUT ─────────────────────────────────────────────────────────────
 async function renderOutput({ gancho, calculo, remate }, isFallback = false) {
+  // Cancel any typewriter that might still be running from a previous call
+  cancelAllTypewriters();
+
   fallbackNote.style.display = isFallback ? "inline" : "none";
   outputCard.classList.remove("visible");
 
@@ -406,6 +428,7 @@ btnCalc.addEventListener("click", () => {
 
 // ── SORPRÉNDEME ────────────────────────────────────────────────────────────────
 btnSurprise.addEventListener("click", () => {
+  if (btnCalc.classList.contains("loading")) return;
   const combo = SURPRISE_COMBOS[Math.floor(Math.random() * SURPRISE_COMBOS.length)];
   inputObjeto.value = combo.objeto;
   inputEvento.value = combo.evento;
