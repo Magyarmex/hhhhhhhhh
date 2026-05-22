@@ -9,8 +9,9 @@ export const FATE_LABELS = {
   stable:      '⚖️ Estable',
   brownDwarf:  '🟤 Enana Café',
   whiteDwarf:  '⚪ Enana Blanca',
+  supernova:   '💥 Supernova → Estrella de Neutrones',
   neutronStar: '💙 Estrella de Neutrones',
-  blackHole:   '⚫ Agujero Negro',
+  blackHole:   '⚫ Agujero Negro (vía Hipernova)',
 };
 
 export function compute(mass, ageGyr, hydrogenPct) {
@@ -41,8 +42,8 @@ export function getFate(mass, zone) {
   if (mass < 0.08) return 'brownDwarf';
   if (zone === 'green' || zone === 'orange') return 'stable';
   if (mass < 8)  return 'whiteDwarf';
-  if (mass < 20) return 'neutronStar';
-  return 'blackHole';
+  if (mass < 20) return 'supernova';   // Supernova → estrella de neutrones
+  return 'blackHole';                  // Hipernova → agujero negro
 }
 
 export function starColor(temperature) {

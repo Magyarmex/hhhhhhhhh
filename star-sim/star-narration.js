@@ -2,8 +2,9 @@ const FATE_NAMES = {
   stable:      'estable',
   brownDwarf:  'enana café (sin ignición)',
   whiteDwarf:  'enana blanca',
+  supernova:   'supernova que termina en estrella de neutrones',
   neutronStar: 'estrella de neutrones',
-  blackHole:   'agujero negro',
+  blackHole:   'agujero negro vía hipernova',
 };
 
 const FALLBACKS = {
@@ -43,6 +44,16 @@ const FALLBACKS = {
     etapa2: [
       { texto: 'El colapso rebota en una onda de choque que destruye el resto de la estrella: una supernova.', ancla:'explosion' },
       { texto: 'Lo que queda es una estrella de neutrones. Gira cientos de veces por segundo y emite rayos de radiación como un faro cósmico.', ancla:'estrella' },
+    ],
+  },
+  supernova: {
+    etapa1: [
+      { texto: 'El núcleo agotó su hidrógeno. Sin la presión de la fusión, la gravedad aplasta el centro de la estrella en microsegundos.', ancla:'nucleo' },
+      { texto: 'El colapso es tan violento que rebota: una onda de choque que viaja hacia afuera destruyendo todo a su paso.', ancla:'particulas' },
+    ],
+    etapa2: [
+      { texto: 'La explosión libera más energía en segundos que el Sol en toda su vida. Los planetas cercanos se evaporan. Lo que queda es una nebulosa de restos brillante.', ancla:'explosion' },
+      { texto: 'En el centro, una estrella de neutrones: el cadáver más denso del universo. Gira cientos de veces por segundo emitiendo rayos de radiación como un faro.', ancla:'estrella' },
     ],
   },
   blackHole: {

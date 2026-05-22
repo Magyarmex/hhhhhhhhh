@@ -12,77 +12,79 @@ const STEPS = ['Encendiendo el núcleo…','Posicionando planetas…','Calibrand
 let loadStep = 0;
 function advanceLoad(pct) {
   loadingBar.style.width = pct + '%';
-  loadingText.textContent = STEPS[loadStep] || STEPS[STEPS.length-1];
+  loadingText.textContent = STEPS[Math.min(loadStep, STEPS.length-1)];
   loadStep++;
 }
-advanceLoad(10);
 
-// ── GSAP (loaded via CDN in HTML) ─────────────────────────────────────────────
-// Polyfill: if GSAP isn't on window, provide a no-op shim so code doesn't break
+// ── GSAP SHIM ─────────────────────────────────────────────────────────────────
 if (!window.gsap) {
   window.gsap = {
-    to: (obj, opts) => {
-      const dur = (opts.duration||1)*1000;
-      setTimeout(() => { opts.onComplete?.(); }, dur);
-    }
+    to: (obj, opts) => { setTimeout(() => opts.onComplete?.(), (opts.duration||1)*1000); },
+    fromTo: (obj, from, opts) => { setTimeout(() => opts.onComplete?.(), (opts.duration||1)*1000); },
   };
 }
 
-// ── INIT ─────────────────────────────────────────────────────────────────────
+// ── STATE ─────────────────────────────────────────────────────────────────────
 let isAnimating = false;
 let scene, ui, cinema, narration, audio;
 
+// ── NAV TAB SWITCH (body class for full-width layout) ─────────────────────────
+function initTabSwitch() {
+  document.querySelectorAll('.nav-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      const section = tab.dataset.section;
+      if (section === 'star-sim') {
+        document.body.classList.add('star-sim-mode');
+        if (scene) setTimeout(() => scene._onResize(), 50);
+      } else {
+        document.body.classList.remove('star-sim-mode');
+      }
+    });
+  });
+}
+
+// ── INIT ─────────────────────────────────────────────────────────────────────
 function init() {
+  initTabSwitch();
   const section = document.getElementById('star-sim');
 
-  // Only init when user navigates to star-sim tab
   const observer = new MutationObserver(() => {
-    if (section.classList.contains('active') && !scene) {
-      startScene();
-    }
+    if (section.classList.contains('active') && !scene) startScene();
   });
   observer.observe(section, { attributes:true, attributeFilter:['class'] });
 
-  // If already active on load
   if (section.classList.contains('active')) startScene();
 }
 
 function startScene() {
-  // Show loading screen while Three.js initializes
   loadingScreen.style.display = 'flex';
   loadingScreen.classList.remove('hidden');
-  advanceLoad(30);
+  advanceLoad(10);
 
-  const container   = document.getElementById('three-canvas-container');
-  const css2dCont   = document.getElementById('css2d-container');
+  const container = document.getElementById('three-canvas-container');
+  const css2dCont = document.getElementById('css2d-container');
 
-  // Systems
   audio     = new StarAudio();
   narration = new StarNarration();
-  advanceLoad(50);
+  advanceLoad(35);
 
   scene = new StarScene(container, css2dCont);
-  advanceLoad(75);
+  advanceLoad(70);
 
-  // Layer click → tooltip
-  scene.onLayerClick = (name, tip, x, y) => showLayerTooltip(name, tip, x, y);
-
+  scene.onLayerClick = showLayerTooltip;
   cinema = new CinematicController(scene, narration, audio);
 
   ui = new StarUI(
-    // onStateChange
     ({ physics, sliders, viewToggle, sunCompare }) => {
       if (physics && sliders) scene.updateStar(physics);
       if (viewToggle !== undefined) scene.toggleInterior(viewToggle);
       if (sunCompare !== undefined) scene.toggleSunGhost(sunCompare);
     },
-    // onPrueba
     async (sliders, physics) => {
       if (isAnimating) return;
       isAnimating = true;
       ui.disableAll();
       document.getElementById('btn-retry').style.display = 'none';
-
       try {
         await cinema.run(physics.fate, sliders, physics);
       } finally {
@@ -92,36 +94,49 @@ function startScene() {
     }
   );
 
-  // Retry button
+  // ── RETRY ────────────────────────────────────────────────────────────────────
   document.getElementById('btn-retry').addEventListener('click', () => {
     document.getElementById('btn-retry').style.display = 'none';
     narration.cancel();
     audio.returnToAmbient();
 
-    // Restore star to healthy state
+    // Clean up all cinematic objects (accretion disk, shockwaves, ejecta, etc.)
+    cinema.cleanupCinematicObjects();
+
+    // Restore scene state
     const { sliders, computed } = ui.getState();
     scene.updateStar(computed);
-    scene.planets.forEach(p => { p.visible = true; p.material.opacity = 1; p.scale.setScalar(1); });
+
+    // Restore planets
+    scene.planets.forEach(p => {
+      p.visible = true;
+      p.scale.setScalar(1);
+      if (p.material) { p.material.opacity = 1; p.material.transparent = false; }
+    });
+
+    // Restore post-processing
     scene.bloomPass.strength = scene.bloomStrength;
     scene.lensPass.enabled = false;
-    scene.camera.position.set(0, 8, 25);
+    if (scene.lensPass.uniforms?.uStrength) scene.lensPass.uniforms.uStrength.value = 0;
 
-    // Restore star scale
-    const r = computed.radius;
-    scene.starMesh.scale.setScalar(Math.max(0.1, r));
+    // Reset star color and size from computed physics
+    scene.starMesh.scale.setScalar(Math.max(0.08, computed.radius));
+    scene.coronaMesh.scale.setScalar(Math.max(0.08, computed.radius) * 1.08);
+
+    // Reset camera
+    gsap.to(scene.camera.position, { x:0, y:8, z:25, duration:1.5, ease:'power2.inOut' });
+    scene.controls.autoRotate = true;
   });
 
-  // First interaction → start audio
-  const simSection = document.getElementById('star-sim');
-  ['click','input'].forEach(evt => {
-    simSection.addEventListener(evt, () => audio.start(), { capture:true });
-  });
+  // ── FIRST INTERACTION → AUDIO ─────────────────────────────────────────────
+  document.getElementById('star-sim').addEventListener('click',  () => audio.start(), { capture:true });
+  document.getElementById('star-sim').addEventListener('input',  () => audio.start(), { capture:true });
 
   advanceLoad(100);
   setTimeout(() => {
     loadingScreen.classList.add('hidden');
-    setTimeout(() => loadingScreen.style.display = 'none', 700);
-  }, 400);
+    setTimeout(() => { loadingScreen.style.display = 'none'; }, 700);
+  }, 500);
 }
 
-document.addEventListener('DOMContentLoaded', () => { init(); });
+document.addEventListener('DOMContentLoaded', init);

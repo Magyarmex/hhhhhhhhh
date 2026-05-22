@@ -1,106 +1,76 @@
-// ── PROCEDURAL AMBIENT via Web Audio API ─────────────────────────────────────
-// No external files required. Generates a spacey ambient drone in-browser.
+// Music: Kevin MacLeod (incompetech.com) — Licensed under Creative Commons: By Attribution 4.0
+// "Mesmerize" (ambient) and "Impact Moderato" (dramatic)
+
 export class StarAudio {
   constructor() {
-    this._ctx       = null;
-    this._master    = null;
+    this._started   = false;
     this._ambient   = null;
     this._dramatic  = null;
-    this._started   = false;
-    this._isDramatic= false;
+    this._ambientId = null;
+    this._dramaticId= null;
   }
 
-  _ensureContext() {
-    if (this._ctx) return;
-    this._ctx    = new (window.AudioContext || window.webkitAudioContext)();
-    this._master = this._ctx.createGain();
-    this._master.gain.value = 0.28;
-    this._master.connect(this._ctx.destination);
-    this._buildAmbient();
-    this._buildDramatic();
-  }
+  _load() {
+    if (this._ambient) return;
+    if (typeof Howl === 'undefined') return;
 
-  // ── AMBIENT: low drone with slow harmonic shimmer ─────────────────────────
-  _buildAmbient() {
-    const ctx = this._ctx;
-    const g = ctx.createGain(); g.gain.value = 0; g.connect(this._master);
-    this._ambientGain = g;
-
-    const freqs = [55, 82.5, 110, 165, 220]; // A1 + harmonics
-    freqs.forEach((f, i) => {
-      const osc = ctx.createOscillator();
-      osc.type = i < 2 ? 'sine' : 'triangle';
-      osc.frequency.value = f;
-
-      const lfo = ctx.createOscillator();
-      lfo.type = 'sine';
-      lfo.frequency.value = 0.07 + i * 0.03;
-      const lfoGain = ctx.createGain();
-      lfoGain.gain.value = f * 0.004;
-      lfo.connect(lfoGain); lfoGain.connect(osc.frequency);
-
-      const vol = ctx.createGain();
-      vol.gain.value = 0.18 / (i + 1);
-      osc.connect(vol); vol.connect(g);
-
-      osc.start(); lfo.start();
+    this._ambient = new Howl({
+      src: ['assets/music/ambient.mp3'],
+      loop: true,
+      volume: 0,
+      preload: true,
+      onloaderror: () => console.warn('Ambient music failed to load'),
     });
 
-    this._ambient = g;
+    this._dramatic = new Howl({
+      src: ['assets/music/dramatic.mp3'],
+      loop: true,
+      volume: 0,
+      preload: true,
+      onloaderror: () => console.warn('Dramatic music failed to load'),
+    });
   }
 
-  // ── DRAMATIC: tense low rumble + high dissonant note ─────────────────────
-  _buildDramatic() {
-    const ctx = this._ctx;
-    const g = ctx.createGain(); g.gain.value = 0; g.connect(this._master);
-    this._dramaticGain = g;
-
-    // Low rumble
-    const rumble = ctx.createOscillator();
-    rumble.type = 'sawtooth'; rumble.frequency.value = 36;
-    const rumbleFilter = ctx.createBiquadFilter();
-    rumbleFilter.type = 'lowpass'; rumbleFilter.frequency.value = 120;
-    const rumbleVol = ctx.createGain(); rumbleVol.gain.value = 0.4;
-    rumble.connect(rumbleFilter); rumbleFilter.connect(rumbleVol); rumbleVol.connect(g);
-
-    // High tension note
-    const tension = ctx.createOscillator();
-    tension.type = 'sine'; tension.frequency.value = 880;
-    const tremolo = ctx.createOscillator();
-    tremolo.type = 'sine'; tremolo.frequency.value = 4.5;
-    const tremoloGain = ctx.createGain(); tremoloGain.gain.value = 0.08;
-    tremolo.connect(tremoloGain); tremoloGain.connect(tension.frequency);
-    const tensionVol = ctx.createGain(); tensionVol.gain.value = 0.06;
-    tension.connect(tensionVol); tensionVol.connect(g);
-
-    rumble.start(); tension.start(); tremolo.start();
-    this._dramatic = g;
-  }
-
-  // ── FIRST INTERACTION TRIGGER ─────────────────────────────────────────────
   start() {
     if (this._started) return;
     this._started = true;
-    this._ensureContext();
-    if (this._ctx.state === 'suspended') this._ctx.resume();
-    this._ambientGain.gain.setTargetAtTime(1, this._ctx.currentTime, 1.5);
+    this._load();
+    if (!this._ambient) return;
+
+    this._ambientId = this._ambient.play();
+    this._ambient.fade(0, 0.38, 2500, this._ambientId);
   }
 
   startDramatic() {
-    if (!this._started) return;
-    this._isDramatic = true;
-    this._ambientGain.gain.setTargetAtTime(0.1, this._ctx.currentTime, 1.0);
-    this._dramaticGain.gain.setTargetAtTime(1, this._ctx.currentTime, 1.0);
+    if (!this._started || !this._ambient) return;
+
+    // Fade ambient down (but keep it audible underneath)
+    this._ambient.fade(0.38, 0.06, 1800, this._ambientId);
+
+    // Bring in dramatic at low volume so TTS is clearly heard
+    if (!this._dramaticId) {
+      this._dramaticId = this._dramatic.play();
+    }
+    this._dramatic.fade(0, 0.14, 1800, this._dramaticId);
   }
 
   returnToAmbient() {
-    if (!this._started) return;
-    this._isDramatic = false;
-    this._dramaticGain.gain.setTargetAtTime(0, this._ctx.currentTime, 1.5);
-    this._ambientGain.gain.setTargetAtTime(1, this._ctx.currentTime, 2.0);
+    if (!this._started || !this._ambient) return;
+
+    // Fade out dramatic
+    if (this._dramaticId) {
+      this._dramatic.fade(0.14, 0, 2500, this._dramaticId);
+      setTimeout(() => {
+        this._dramatic.stop(this._dramaticId);
+        this._dramaticId = null;
+      }, 2600);
+    }
+
+    // Restore ambient
+    this._ambient.fade(0.06, 0.38, 2500, this._ambientId);
   }
 
-  setVolume(v) {
-    if (this._master) this._master.gain.setTargetAtTime(v, this._ctx.currentTime, 0.3);
+  setMasterVolume(v) {
+    if (typeof Howler !== 'undefined') Howler.volume(v);
   }
 }
