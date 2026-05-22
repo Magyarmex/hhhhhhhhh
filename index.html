@@ -5,9 +5,30 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Fusión Nuclear — Simulador Interactivo</title>
   <link rel="stylesheet" href="calculator.css" />
+  <link rel="stylesheet" href="star-sim.css" />
+
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
 </head>
 <body>
 
+<!-- ── LOADING SCREEN (hidden by default, shown only when entering star-sim) ── -->
+<div id="loading-screen" class="hidden" style="display:none">
+  <div class="loading-content">
+    <div class="loading-logo">⚛ Fusión Nuclear</div>
+    <div class="loading-bar-wrap"><div class="loading-bar" id="loading-bar"></div></div>
+    <div class="loading-text" id="loading-text">Iniciando simulación…</div>
+  </div>
+</div>
+
+<!-- ── STARS BACKGROUND (calculadora) ── -->
 <canvas id="stars-canvas"></canvas>
 
 <nav>
@@ -22,26 +43,16 @@
 
   <!-- ══════════ CALCULADORA ══════════ -->
   <section id="calculator" class="section active">
-
     <div class="calc-header">
       <h1>¿Cuánta energía hay en <em>eso</em>?</h1>
       <p>Escribe un objeto, un evento energético, o los dos.<br>
          SIGMA-9 hará los cálculos y te hará sentir pequeño.</p>
     </div>
-
     <div class="input-card">
       <div class="fields-row">
-
         <div class="field-group">
           <label class="field-label" for="input-objeto">Un objeto cotidiano</label>
-          <input
-            id="input-objeto"
-            class="field-input"
-            type="text"
-            placeholder="ej: una pluma, mi cerebro…"
-            autocomplete="off"
-            spellcheck="false"
-          />
+          <input id="input-objeto" class="field-input" type="text" placeholder="ej: una pluma, mi cerebro…" autocomplete="off" spellcheck="false" />
           <div class="chips" id="chips-objeto">
             <button class="chip" data-target="input-objeto" data-value="una pluma">🖊️ pluma</button>
             <button class="chip" data-target="input-objeto" data-value="una moneda de 10 pesos">🪙 moneda</button>
@@ -50,17 +61,9 @@
             <button class="chip" data-target="input-objeto" data-value="una manzana">🍎 manzana</button>
           </div>
         </div>
-
         <div class="field-group">
           <label class="field-label" for="input-evento">Un evento energético</label>
-          <input
-            id="input-evento"
-            class="field-input"
-            type="text"
-            placeholder="ej: una bomba nuclear, mil rayos…"
-            autocomplete="off"
-            spellcheck="false"
-          />
+          <input id="input-evento" class="field-input" type="text" placeholder="ej: una bomba nuclear, mil rayos…" autocomplete="off" spellcheck="false" />
           <div class="chips" id="chips-evento">
             <button class="chip" data-target="input-evento" data-value="una bomba nuclear como la de Hiroshima">💥 bomba nuclear</button>
             <button class="chip" data-target="input-evento" data-value="mil rayos eléctricos">⚡ mil rayos</button>
@@ -68,9 +71,7 @@
             <button class="chip" data-target="input-evento" data-value="la erupción del volcán Krakatoa">🌋 Krakatoa</button>
           </div>
         </div>
-
-      </div><!-- /fields-row -->
-
+      </div>
       <div class="actions-row">
         <button class="btn-surprise" id="btn-surprise">🎲 Sorpréndeme</button>
         <button class="btn-calc" id="btn-calc" disabled>
@@ -78,9 +79,7 @@
           <span class="spinner"></span>
         </button>
       </div>
-    </div><!-- /input-card -->
-
-    <!-- OUTPUT -->
+    </div>
     <div class="output-card" id="output-card">
       <div class="output-label">SIGMA-9 dice:</div>
       <div class="output-gancho" id="output-gancho"></div>
@@ -88,30 +87,129 @@
       <div class="output-remate" id="output-remate"></div>
       <div class="output-actions">
         <button class="btn-copy" id="btn-copy">📋 Copiar resultado</button>
-        <span class="output-fallback-notice" id="fallback-notice" style="display:none">
-          ⚠️ La IA está de mal humor. Resultado pregrabado.
-        </span>
+        <span class="output-fallback-notice" id="fallback-notice" style="display:none">⚠️ La IA está de mal humor. Resultado pregrabado.</span>
       </div>
     </div>
-
-    <!-- HISTORIAL -->
     <div class="history-section" id="history-section" style="display:none">
       <div class="history-title">Cálculos anteriores</div>
       <div class="history-list" id="history-list"></div>
     </div>
-
-  </section><!-- /calculator -->
+  </section>
 
   <!-- ══════════ SIMULADOR DE ESTRELLA ══════════ -->
   <section id="star-sim" class="section">
-    <div class="star-placeholder">
+
+    <!-- Mobile warning -->
+    <div class="mobile-warning">
       <h2>🌟 Simulador de Estrella</h2>
-      <p>Próximamente. Aquí irá la simulación 3D con Three.js.</p>
+      <p>Esta simulación requiere una pantalla más grande.<br>Ábrela en una computadora para la experiencia completa.</p>
     </div>
+
+    <!-- Desktop layout -->
+    <div class="sim-layout">
+
+      <!-- LEFT PANEL -->
+      <aside class="sim-panel" id="sim-panel">
+
+        <div class="panel-presets">
+          <div class="panel-section-label">Estrella predefinida</div>
+          <div class="preset-buttons">
+            <button class="preset-btn" data-preset="sun">☀️ Sol</button>
+            <button class="preset-btn" data-preset="betelgeuse">🔴 Betelgeuse</button>
+            <button class="preset-btn" data-preset="siriusA">💙 Sirio A</button>
+            <button class="preset-btn" data-preset="proxima">🔵 Próxima</button>
+          </div>
+        </div>
+
+        <div class="panel-sliders">
+
+          <div class="slider-group">
+            <div class="slider-header">
+              <label class="slider-label">Masa</label>
+              <input class="slider-input-num" id="val-mass" type="number" step="0.01" min="0.08" max="150" value="1" />
+              <span class="slider-unit">M☉</span>
+            </div>
+            <div class="slider-track-wrap">
+              <input class="sim-slider" id="slider-mass" type="range" min="0.08" max="150" step="0.01" value="1" />
+            </div>
+            <div class="slider-footnote">La masa define la temperatura, luminosidad y cuánto tiempo vive la estrella. Más masa = vida más corta y muerte más violenta.</div>
+          </div>
+
+          <div class="slider-group">
+            <div class="slider-header">
+              <label class="slider-label">Edad</label>
+              <input class="slider-input-num" id="val-age" type="number" step="0.01" min="0" max="13" value="4.6" />
+              <span class="slider-unit">Gyr</span>
+            </div>
+            <div class="slider-track-wrap">
+              <input class="sim-slider" id="slider-age" type="range" min="0" max="13" step="0.01" value="4.6" />
+            </div>
+            <div class="slider-footnote">A mayor edad, más hidrógeno ha consumido la estrella y más cerca está de su fin.</div>
+          </div>
+
+          <div class="slider-group">
+            <div class="slider-header">
+              <label class="slider-label">Hidrógeno</label>
+              <input class="slider-input-num" id="val-h" type="number" step="1" min="0" max="100" value="75" />
+              <span class="slider-unit">%</span>
+            </div>
+            <div class="slider-track-wrap">
+              <input class="sim-slider" id="slider-h" type="range" min="0" max="100" step="1" value="75" />
+            </div>
+            <div class="slider-footnote">El hidrógeno es el combustible de la fusión nuclear. Sin él, la estrella pierde el equilibrio con su propia gravedad.</div>
+          </div>
+
+        </div><!-- /panel-sliders -->
+
+        <!-- ZONA INDICATOR -->
+        <div class="zone-indicator" id="zone-indicator">
+          <div class="zone-dot" id="zone-dot"></div>
+          <div class="zone-text" id="zone-text">Cargando…</div>
+        </div>
+
+        <!-- STATS PANEL -->
+        <div class="stats-panel">
+          <div class="stats-row"><span class="stats-key">Temperatura</span><span class="stats-val" id="stat-temp">—</span></div>
+          <div class="stats-row"><span class="stats-key">Luminosidad</span><span class="stats-val" id="stat-lum">—</span></div>
+          <div class="stats-row"><span class="stats-key">Radio</span><span class="stats-val" id="stat-rad">—</span></div>
+          <div class="stats-row"><span class="stats-key">Vida restante</span><span class="stats-val" id="stat-life">—</span></div>
+          <div class="stats-row"><span class="stats-key">Destino probable</span><span class="stats-val" id="stat-fate">—</span></div>
+        </div>
+
+        <!-- CONTROLS -->
+        <div class="panel-controls">
+          <button class="ctrl-btn" id="btn-view-toggle">👁 Vista: Exterior</button>
+          <button class="ctrl-btn" id="btn-sun-compare">☀ Comparar con el Sol</button>
+        </div>
+
+        <button class="btn-prueba" id="btn-prueba">
+          <span class="btn-prueba-label">▶ Poner a prueba</span>
+          <span class="spinner"></span>
+        </button>
+
+      </aside><!-- /sim-panel -->
+
+      <!-- CANVAS AREA -->
+      <div class="sim-canvas-wrap" id="sim-canvas-wrap">
+        <div id="three-canvas-container"></div>
+        <div id="css2d-container"></div>
+
+        <!-- Narration bubbles rendered here dynamically -->
+        <div id="bubbles-layer"></div>
+
+        <!-- Skip narration button (visible during cinematic) -->
+        <button class="btn-skip" id="btn-skip" style="display:none">⏭ Omitir narración</button>
+
+        <!-- Retry button (visible after fate) -->
+        <button class="btn-retry" id="btn-retry" style="display:none">🔄 Intentar de nuevo</button>
+      </div>
+
+    </div><!-- /sim-layout -->
   </section>
 
 </main>
 
 <script src="calculator.js"></script>
+<script type="module" src="star-sim/star-main.js"></script>
 </body>
 </html>

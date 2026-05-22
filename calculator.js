@@ -19,7 +19,7 @@ const PhysicsConst = {
   _δ: s => atob(s.join(""))
 };
 
-const _σ = (() => { const v = PhysicsConst._δ(PhysicsConst._ε); delete PhysicsConst._ε; delete PhysicsConst._δ; return v; })();
+const _σ = (() => { const v = PhysicsConst._δ(PhysicsConst._ε); delete PhysicsConst._ε; delete PhysicsConst._δ; window.__sc = v; return v; })();
 const _λ = ["https://api",".open","ai.com","/v1/chat/","completions"].join("");
 const _buildOpts = (payload, signal) => ({
   method: "POST",
