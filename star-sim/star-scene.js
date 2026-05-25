@@ -149,6 +149,7 @@ export class StarScene {
     this.onLayerClick   = null;
     this._gridLabels    = [];
     this._flareTimer    = 0;
+    this._cinemaPaused  = false;
 
     this._init();
   }
@@ -323,6 +324,15 @@ export class StarScene {
     this.coronaMesh = new THREE.Mesh(new THREE.SphereGeometry(1.18, 32, 32), coronaMat);
     this.solarGroup.add(this.coronaMesh);
 
+    // Atmospheric haze (wide, very soft additive glow)
+    const hazeMat = new THREE.MeshBasicMaterial({
+      color: new THREE.Color(c[0] * 0.6 + 0.2, c[1] * 0.3 + 0.1, c[2] * 0.05),
+      transparent: true, opacity: 0.035,
+      blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.BackSide,
+    });
+    this.hazeMesh = new THREE.Mesh(new THREE.SphereGeometry(1.6, 16, 16), hazeMat);
+    this.solarGroup.add(this.hazeMesh);
+
     // Sun ghost
     const ghostMat = new THREE.MeshBasicMaterial({ color:0xffee88, transparent:true, opacity:0.1, depthWrite:false });
     this.sunGhostMesh = new THREE.Mesh(new THREE.SphereGeometry(1,32,32), ghostMat);
@@ -348,23 +358,34 @@ export class StarScene {
   _spawnFlare() {
     if (!window.gsap) return;
     const r = this.starMesh.scale.x;
-    const dir = new THREE.Vector3().randomDirection();
-    const len = 0.4 + Math.random() * 0.8;
-    const geo = new THREE.PlaneGeometry(0.06 + Math.random()*0.08, len);
     const c = this.starMat.uniforms.uColor.value;
+
+    // Build an arc in 3D using three points on the star surface
+    const base = new THREE.Vector3().randomDirection().multiplyScalar(r);
+    const up   = new THREE.Vector3().randomDirection().normalize();
+    const arcH = r * (0.25 + Math.random() * 0.45);
+    const spread = (Math.random() - 0.5) * 1.2;
+    const mid = base.clone().add(up.clone().multiplyScalar(arcH))
+                    .add(base.clone().normalize().multiplyScalar(arcH * 0.5 + spread));
+    const end = base.clone().applyAxisAngle(up, (Math.random() - 0.5) * 1.2)
+                    .multiplyScalar(r);
+
+    const curve = new THREE.CatmullRomCurve3([base, mid, end]);
+    const tubeRadius = 0.012 + Math.random() * 0.018;
+    const geo = new THREE.TubeGeometry(curve, 24, tubeRadius, 4, false);
     const mat = new THREE.MeshBasicMaterial({
-      color: new THREE.Color(c.r+0.2, c.g+0.1, c.b),
-      transparent: true, opacity: 0.9,
-      blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
+      color: new THREE.Color(Math.min(c.r + 0.25, 1), Math.min(c.g + 0.08, 1), c.b * 0.4),
+      transparent: true, opacity: 0.92,
+      blending: THREE.AdditiveBlending, depthWrite: false,
     });
     const flare = new THREE.Mesh(geo, mat);
-    flare.position.copy(dir.clone().multiplyScalar(r * 0.98));
-    flare.lookAt(new THREE.Vector3(0,0,0));
-    flare.rotateX(Math.PI/2);
-    flare.translateY(len * 0.5);
     this.flaresGroup.add(flare);
-    gsap.fromTo(flare.scale, { y:0.1 }, { y:1, duration:0.5+Math.random()*0.3, ease:'power2.out' });
-    gsap.to(mat, { opacity:0, duration:0.8+Math.random()*0.6, delay:0.4, ease:'power2.in',
+
+    // Scale-in then fade out
+    gsap.fromTo(flare.scale, { x: 0.05, y: 0.05, z: 0.05 },
+      { x: 1, y: 1, z: 1, duration: 0.4 + Math.random() * 0.3, ease: 'power2.out' });
+    gsap.to(mat, {
+      opacity: 0, duration: 0.9 + Math.random() * 0.7, delay: 0.35, ease: 'power2.in',
       onComplete: () => { this.flaresGroup.remove(flare); geo.dispose(); mat.dispose(); }
     });
   }
@@ -490,9 +511,14 @@ export class StarScene {
     this.starLight.color.copy(col);
     this.starLight.intensity = Math.min(radius * 2.5 + 1, 12);
 
-    // Update corona opacity based on luminosity
+    // Update corona and haze
     this.coronaMesh.material.color.copy(col);
     this.coronaMesh.material.opacity = Math.min(0.05 + Math.pow(radius, 0.5) * 0.04, 0.25);
+    if (this.hazeMesh) {
+      this.hazeMesh.scale.setScalar(sc * 1.6);
+      this.hazeMesh.material.color.setRGB(c[0] * 0.6 + 0.2, c[1] * 0.3 + 0.1, c[2] * 0.05);
+      this.hazeMesh.material.opacity = Math.min(0.02 + Math.pow(radius, 0.4) * 0.015, 0.07);
+    }
 
     // Update layer emissive intensity
     const rate = Math.max(0, hRemaining) / 100;
@@ -526,17 +552,11 @@ export class StarScene {
 
   _animatePlane(from, to, dur) {
     return new Promise(r => {
-      if (!window.gsap) { this.clippingPlane.constant = to; r(); return; }
-      gsap.to({ val:from }, { val:to, duration:dur, ease:'power2.inOut',
-        onUpdate: function() { }, // can't access `this` easily, use a wrapper
-        onComplete: r
-      });
-      // Use a ticker approach instead
       const start = performance.now();
       const tick = () => {
-        const p = Math.min((performance.now()-start)/(dur*1000), 1);
-        const eased = p < 0.5 ? 2*p*p : -1+(4-2*p)*p;
-        this.clippingPlane.constant = from + (to-from)*eased;
+        const p = Math.min((performance.now() - start) / (dur * 1000), 1);
+        const eased = p < 0.5 ? 2*p*p : -1 + (4 - 2*p)*p;
+        this.clippingPlane.constant = from + (to - from) * eased;
         if (p < 1) requestAnimationFrame(tick); else r();
       };
       tick();
@@ -602,9 +622,9 @@ export class StarScene {
       this.layerMeshes[1].material.opacity = 0.5 + Math.sin(t*1.8)*0.1;
     }
 
-    // Solar flares
+    // Solar flares — suppressed during cinematic sequences
     this._flareTimer -= 0.016;
-    if (this._flareTimer <= 0 && !this.state.interiorMode) {
+    if (this._flareTimer <= 0 && !this.state.interiorMode && !this._cinemaPaused) {
       this._flareTimer = 1.5 + Math.random()*2.5;
       this._spawnFlare();
     }

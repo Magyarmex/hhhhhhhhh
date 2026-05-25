@@ -100,10 +100,41 @@ function startScene() {
     narration.cancel();
     audio.returnToAmbient();
 
-    // Clean up all cinematic objects (accretion disk, shockwaves, ejecta, etc.)
+    // Kill any running GSAP tweens on scene objects before resetting state
+    if (window.gsap) {
+      gsap.killTweensOf(scene.starMesh.scale);
+      gsap.killTweensOf(scene.starMat.uniforms.uColor.value);
+      gsap.killTweensOf(scene.coronaMesh.scale);
+      gsap.killTweensOf(scene.coronaMesh.material);
+      gsap.killTweensOf(scene.bloomPass);
+      gsap.killTweensOf(scene.camera.position);
+      if (scene.lensPass.uniforms?.uStrength) gsap.killTweensOf(scene.lensPass.uniforms.uStrength);
+      if (scene.hazeMesh) gsap.killTweensOf(scene.hazeMesh.material);
+      scene.planets.forEach(p => { gsap.killTweensOf(p.scale); gsap.killTweensOf(p.material); });
+    }
+
+    // Clean up cinematic objects (kills their GSAP tweens internally)
     cinema.cleanupCinematicObjects();
 
-    // Restore scene state
+    // Resume flare spawning
+    scene._cinemaPaused = false;
+
+    // Restore visibility of objects that animations may have hidden
+    scene.starMesh.visible   = true;
+    scene.coronaMesh.visible = true;
+    if (scene.hazeMesh) scene.hazeMesh.visible = true;
+
+    // Exit interior mode if it was active when skip was clicked
+    if (scene.state.interiorMode) {
+      scene.state.interiorMode  = false;
+      scene.interiorGroup.visible = false;
+      scene.macroParticles.visible = false;
+      scene.microGroup.visible  = false;
+      scene.clippingPlane.constant = 500;
+      scene.gridGroup.visible   = true;
+    }
+
+    // Restore star physics (resets color, scale, corona opacity, haze opacity)
     const { sliders, computed } = ui.getState();
     scene.updateStar(computed);
 
@@ -119,12 +150,12 @@ function startScene() {
     scene.lensPass.enabled = false;
     if (scene.lensPass.uniforms?.uStrength) scene.lensPass.uniforms.uStrength.value = 0;
 
-    // Reset star color and size from computed physics
+    // Explicit scale reset (updateStar already does this, belt-and-suspenders)
     scene.starMesh.scale.setScalar(Math.max(0.08, computed.radius));
     scene.coronaMesh.scale.setScalar(Math.max(0.08, computed.radius) * 1.08);
 
-    // Reset camera
-    gsap.to(scene.camera.position, { x:0, y:8, z:25, duration:1.5, ease:'power2.inOut' });
+    // Reset camera (started after kills so this tween runs cleanly)
+    if (window.gsap) gsap.to(scene.camera.position, { x:0, y:8, z:25, duration:1.5, ease:'power2.inOut' });
     scene.controls.autoRotate = true;
   });
 
