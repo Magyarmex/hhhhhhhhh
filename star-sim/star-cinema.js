@@ -178,16 +178,15 @@ export class CinematicController {
     ]);
     if (this.scene.hazeMesh) this.scene.hazeMesh.visible = false;
 
-    // Phase 3: brilliant blue-white dwarf revealed
-    await Promise.all([
-      this._tweenColor(this.scene.starMat.uniforms.uColor.value, 0.85, 0.92, 1.0, 1.5),
-      this._tween(this.scene.bloomPass, { strength: 3.8 }, 1.5),
-    ]);
+    // Phase 3: white dwarf — replace shader star with a guaranteed-visible remnant mesh
+    this.scene.starMesh.visible = false;
+    this._makeCompactRemnant(0xaaccff, 0.13);
+    await this._tween(this.scene.bloomPass, { strength: 4.5 }, 1.2);
 
-    await this._moveCam({ x: 4, y: 6, z: camZ * 0.5 }, 2.5);
+    await this._moveCam({ x: 0, y: 0.5, z: 6 }, 2.5);
     await this._wait(3500);
 
-    this.scene.bloomPass.strength = this.scene.bloomStrength;
+    this.scene.bloomPass.strength = 3.5;
     this.audio?.returnToAmbient();
   }
 
@@ -243,14 +242,10 @@ export class CinematicController {
     this._spawnNebulaCloud(0x88ffcc, 100, 22);
     await this._wait(1800);
 
-    // Neutron star emerges — tiny blue dot, no corona
-    this.scene.starMesh.visible = true;
-    this.scene.starMesh.scale.setScalar(0.07);
-    await Promise.all([
-      this._tweenColor(this.scene.starMat.uniforms.uColor.value, 0.5, 0.75, 1.0, 1.0),
-      this._tween(this.scene.bloomPass, { strength: 3.2 }, 1.0),
-    ]);
-    await this._moveCam({ x: 0, y: 6, z: 22 }, 2.0);
+    // Neutron star emerges — compact remnant mesh, no shader star needed
+    this._makeCompactRemnant(0x88aaff, 0.09);
+    await this._tween(this.scene.bloomPass, { strength: 3.5 }, 1.0);
+    await this._moveCam({ x: 0, y: 0.5, z: 6 }, 2.0);
 
     const beam = this._makePulsarBeam();
     await this._wait(4500);
@@ -258,7 +253,7 @@ export class CinematicController {
 
     await this._wait(800);
     if (window.gsap) gsap.killTweensOf(this.scene.bloomPass);
-    this.scene.bloomPass.strength = this.scene.bloomStrength;
+    this.scene.bloomPass.strength = 3.0;
     this.audio?.returnToAmbient();
   }
 
@@ -298,12 +293,11 @@ export class CinematicController {
     this._spawnNebulaCloud(0x4488ff, 180, 24);
     this._spawnNebulaCloud(0xffaa44, 120, 20);
 
-    // Neutron star colors in
-    await Promise.all([
-      this._tweenColor(this.scene.starMat.uniforms.uColor.value, 0.5, 0.75, 1.0, 0.8),
-      this._tween(this.scene.bloomPass, { strength: 3.2 }, 0.8),
-    ]);
-    await this._moveCam({ x: 0, y: 4, z: 16 }, 1.8);
+    // Neutron star — hide the now-tiny shader sphere, show compact remnant mesh
+    this.scene.starMesh.visible = false;
+    this._makeCompactRemnant(0x88aaff, 0.09);
+    await this._tween(this.scene.bloomPass, { strength: 3.5 }, 0.8);
+    await this._moveCam({ x: 0, y: 0.5, z: 6 }, 1.8);
 
     const beam = this._makePulsarBeam();
     await this._wait(4200);
@@ -311,7 +305,7 @@ export class CinematicController {
 
     await this._wait(800);
     if (window.gsap) gsap.killTweensOf(this.scene.bloomPass);
-    this.scene.bloomPass.strength = this.scene.bloomStrength;
+    this.scene.bloomPass.strength = 3.0;
     this.audio?.returnToAmbient();
   }
 
@@ -533,6 +527,26 @@ export class CinematicController {
     // Relative rotation so repeat:-1 never snaps back to origin
     if (window.gsap) gsap.to(beam.rotation, { y: '+=' + (Math.PI * 2 * 100), duration: 220, repeat: -1, ease: 'none' });
     return beam;
+  }
+
+  // Guaranteed-visible compact remnant: bypasses the ShaderMaterial star sphere entirely.
+  // Uses MeshBasicMaterial + additive blending so it always renders regardless of clipping
+  // planes, shader complexity, or uRadius issues.
+  _makeCompactRemnant(color, radius) {
+    const group = new THREE.Group();
+    // Bright core
+    const coreMat = new THREE.MeshBasicMaterial({ color, blending: THREE.AdditiveBlending, depthWrite: false });
+    group.add(new THREE.Mesh(new THREE.SphereGeometry(radius, 20, 20), coreMat));
+    // Soft wide halo for bloom catch area
+    const haloMat = new THREE.MeshBasicMaterial({
+      color, transparent: true, opacity: 0.28,
+      blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.BackSide,
+    });
+    group.add(new THREE.Mesh(new THREE.SphereGeometry(radius * 3.5, 16, 16), haloMat));
+    group.userData.isCinematic = true;
+    this.scene.scene.add(group);
+    this._cinematicObjs.push(group);
+    return group;
   }
 
   _makePhotonRing() {
